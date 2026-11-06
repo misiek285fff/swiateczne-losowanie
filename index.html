@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Świąteczne losowanie prezentów</title>
+  <meta name="theme-color" content="#173b2b">
+  <style>
+    :root { color-scheme: light; --green:#173b2b; --red:#9e3939; --cream:#fbf7ef; --gold:#c59a50; }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; display:grid; place-items:center; padding:24px;
+      font-family: Georgia, "Times New Roman", serif; color:#25352c;
+      background: radial-gradient(circle at top, #fffdf8, #eee5d5 75%);
+    }
+    .card {
+      width:min(100%, 620px); background:rgba(255,253,248,.96); border:1px solid #e4d7c2;
+      border-radius:22px; padding:clamp(24px,6vw,48px); text-align:center;
+      box-shadow:0 18px 55px rgba(40,35,25,.12); position:relative; overflow:hidden;
+    }
+    .card:before,.card:after { content:"✦"; position:absolute; color:#c59a50; opacity:.5; font-size:28px; }
+    .card:before { top:17px; left:20px; } .card:after { bottom:17px; right:20px; }
+    .eyebrow { color:var(--red); text-transform:uppercase; letter-spacing:.18em; font: bold 11px Arial,sans-serif; }
+    h1 { color:var(--green); font-size:clamp(30px,7vw,43px); line-height:1.08; margin:14px 0 12px; }
+    .intro { font:16px/1.6 Arial,sans-serif; color:#5d665f; margin:0 auto 24px; max-width:440px; }
+    .ornament { color:var(--gold); font-size:24px; margin:12px 0 20px; letter-spacing:.3em; }
+    button {
+      border:0; border-radius:999px; padding:15px 27px; cursor:pointer;
+      background:var(--green); color:white; font:bold 15px Arial,sans-serif;
+      box-shadow:0 5px 0 #0d281c; transition:transform .12s, opacity .12s;
+    }
+    button:hover { transform:translateY(-1px); } button:active { transform:translateY(3px); box-shadow:0 2px 0 #0d281c; }
+    button:disabled { opacity:.55; cursor:wait; transform:none; }
+    #result { display:none; margin:26px 0 18px; padding:23px 18px; border:1px dashed #c59a50; border-radius:16px; background:#fffaf0; }
+    #result small { display:block; font: bold 11px Arial,sans-serif; letter-spacing:.14em; color:var(--red); text-transform:uppercase; margin-bottom:12px; }
+    #phrase { font-size:clamp(22px,5vw,29px); line-height:1.35; color:var(--green); }
+    #status { min-height:24px; margin:18px 0 0; font:13px/1.5 Arial,sans-serif; color:#68736b; }
+    .note { margin-top:26px; padding-top:20px; border-top:1px solid #eee4d5; font:13px/1.6 Arial,sans-serif; color:#737a73; }
+    .note strong { color:#45564a; }
+    .footer { margin-top:17px; font:12px Arial,sans-serif; color:#a29a8c; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="eyebrow">Rodzinne losowanie</div>
+    <h1>Świąteczny<br>prezent-niespodzianka</h1>
+    <p class="intro">Wylosuj swoje hasło i przygotuj prezent na wypadek, gdyby właśnie taka sytuacja się wydarzyła!</p>
+    <div class="ornament">✧ ❄ ✧</div>
+    <button id="drawButton" type="button">Wylosuj moje hasło</button>
+    <section id="result" aria-live="polite">
+      <small>Twoje hasło</small>
+      <div id="phrase"></div>
+    </section>
+    <p id="status" role="status"></p>
+    <div class="note">
+      <strong>Przypomnienie:</strong> prezent do 50 zł. Dołącz krótki, najlepiej zabawny wiersz,
+      który wyjaśni związek prezentu z wylosowanym hasłem. Wiersz przeczytamy przy wręczaniu prezentu.
+      <br><br>Nie zdradzaj nikomu swojego hasła!
+    </div>
+    <div class="footer">Wesołych Świąt! 🎄</div>
+  </main>
+
+  <!-- Wstaw dane projektu Supabase w dwóch miejscach poniżej. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://smclvrsapzuwzdepuzsa.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_PggjWJ53ylP9ecHdyox5lg_Vudh2RQt";
+    const STORAGE_KEY = "swiateczne-losowanie-client-id";
+
+    const button = document.getElementById("drawButton");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const phraseEl = document.getElementById("phrase");
+
+    function getClientId() {
+      let id = localStorage.getItem(STORAGE_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(STORAGE_KEY, id);
+      }
+      return id;
+    }
+
+    function showPhrase(phrase) {
+      phraseEl.textContent = phrase;
+      resultEl.style.display = "block";
+      button.textContent = "To moje hasło";
+      button.disabled = true;
+      statusEl.textContent = "Hasło zostało przypisane do tego urządzenia. Zapisz je sobie!";
+    }
+
+    async function draw() {
+      if (SUPABASE_URL.includes("WKLEJ_TUTAJ") || SUPABASE_ANON_KEY.includes("WKLEJ_TUTAJ")) {
+        statusEl.textContent = "Strona wymaga jeszcze konfiguracji Supabase. Zajrzyj do instrukcji w paczce.";
+        return;
+      }
+      button.disabled = true;
+      statusEl.textContent = "Losuję…";
+      try {
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const { data, error } = await client.rpc("draw_prompt", { p_client_id: getClientId() });
+        if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
+        if (!row || !row.prompt) {
+          resultEl.style.display = "none";
+          statusEl.textContent = "Wszystkie hasła zostały już wylosowane. Daj znać organizatorowi!";
+          button.textContent = "Brak wolnych haseł";
+          return;
+        }
+        showPhrase(row.prompt);
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Nie udało się połączyć z losowaniem. Sprawdź konfigurację i spróbuj ponownie.";
+        button.disabled = false;
+      }
+    }
+
+    button.addEventListener("click", draw);
+    // Jeśli ktoś wraca na tę samą przeglądarkę, pokaż mu wcześniej przydzielone hasło.
+    if (localStorage.getItem(STORAGE_KEY)) draw();
+  </script>
+</body>
+</html>
