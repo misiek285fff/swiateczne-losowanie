@@ -109,10 +109,10 @@
         }
         showPhrase(row.prompt);
       } catch (err) {
-        console.error(err);
-        statusEl.textContent = "Nie udało się połączyć z losowaniem. Sprawdź konfigurację i spróbuj ponownie.";
-        button.disabled = false;
-      }
+  console.error(err);
+  statusEl.textContent = "Błąd: " + (err.message || JSON.stringify(err));
+  button.disabled = false;
+}
     }
 
     button.addEventListener("click", draw);
